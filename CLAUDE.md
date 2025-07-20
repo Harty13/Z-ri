@@ -171,3 +171,37 @@ Subtypen sind bspw. Concert, Market
 3. Hinweise & Informationen (Basistyp: Info)
 
 // Werden erst später implementiert.
+
+## Current Implementation Status
+
+### Already Implemented (Legacy - to be replaced)
+- Location.swift: Concrete struct with comprehensive fields including geohash, Firebase integration
+- LocationType.swift: Struct with fountain and toilet types
+- FirebaseAPI.swift: Complete service with geohash-based spatial queries
+- MapManager.swift: Location services and camera management
+- ContentView.swift: Full map UI with filters, location browsing, route display
+- UI Components: CompactLocationView, LocationMarkerView, LocationSheetView
+
+### Architecture Migration Plan
+The current implementation uses concrete structs rather than the protocol-based architecture specified above. The migration involves:
+
+1. Implement protocol-based Location architecture
+2. Create specific location type structs (Fountain, Toilet, Library, Park)
+3. Update Firebase service to work with protocols
+4. Migrate UI components to use new architecture
+5. Remove legacy concrete Location struct
+
+### Technical Requirements
+- All variables, classes, and types must be named in English
+- Use protocol-based design for extensibility
+- Firebase Firestore integration with @DocumentID support
+- Geohash-based spatial queries for performance
+- CLLocationCoordinate2D integration for MapKit
+- Codable compliance for Firebase serialization
+
+### Location Type Specifications
+Based on requirements clarification:
+- Fountain: No additional properties beyond base Location protocol
+- Toilet: Additional property `price: String?` (e.g., "Free", "1 CHF", "2 CHF")
+- Library: No additional properties beyond base Location protocol
+- Park: No additional properties beyond base Location protocol
