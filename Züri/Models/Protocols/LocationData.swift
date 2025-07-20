@@ -7,9 +7,11 @@
 
 import Foundation
 import MapKit
+import GeohashKit
 
 struct LocationData: Codable {
     var coordinates: CLLocationCoordinate2D
+    var geohash: String
     var name: String
     var tags: [String]
     var imageUrls: [String]
@@ -21,6 +23,7 @@ struct LocationData: Codable {
          imageUrls: [String] = [],
          isPublic: Bool = true) {
         self.coordinates = coordinates
+        self.geohash = Geohash.encode(latitude: coordinates.latitude, longitude: coordinates.longitude, precision: 12)
         self.name = name
         self.tags = tags
         self.imageUrls = imageUrls
