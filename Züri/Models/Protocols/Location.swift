@@ -14,6 +14,7 @@ protocol Location: Codable {
     var data: LocationData { get set }
     
     var coordinates: CLLocationCoordinate2D { get }
+    var geohash: String { get }
     var name: String { get }
     var tags: [String] { get }
     var imageUrls: [String] { get }
@@ -23,6 +24,7 @@ protocol Location: Codable {
 
 extension Location {
     var coordinates: CLLocationCoordinate2D { data.coordinates }
+    var geohash: String { data.geohash }
     var name: String { data.name }
     var tags: [String] { data.tags }
     var imageUrls: [String] { data.imageUrls }
