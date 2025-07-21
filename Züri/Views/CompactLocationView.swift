@@ -9,59 +9,51 @@ import SwiftUI
 import MapKit
 
 struct CompactLocationView: View {
-    var location: Location
-    var type: LocationType?
+    var location: any Location
+    
     var body: some View {
         HStack {
             VStack(alignment: .leading) {
-                if let type {
-                    HStack {
-                        Image(systemName: type.systemImageName)
-                            .font(.system(size: 8))
-                            .foregroundStyle(.white)
-                            .padding(4)
-                            .background(Circle().fill(type.tint))
-                        Text(type.title)
-                            .font(.body.weight(.black).width(.expanded))
-                    }
+                HStack {
+                    Image(systemName: location.type.systemImageName)
+                        .font(.system(size: 8))
+                        .foregroundStyle(.white)
+                        .padding(4)
+                        .background(Circle().fill(location.type.tint))
+                    Text(location.type.title)
+                        .font(.body.weight(.black).width(.expanded))
                 }
-                if let name = location.name {
-                    Text(name)
-                        .fontWeight(.bold)
-                }
-                if let description = location.description {
-                    Text(description)
+                
+                Text(location.name)
+                    .fontWeight(.bold)
+                
+                if !location.tags.isEmpty {
+                    Text(location.tags.first ?? "")
                         .fontWeight(.bold)
                         .foregroundStyle(.secondary)
                 }
-                if let locationDescription = location.locationDescription {
-                    Text(locationDescription)
-                        .fontWeight(.bold)
-                        .foregroundStyle(.secondary)
-                }
-                if let isOperational = location.isOperational {
+                
+                // Show pricing for toilets
+                if let toilet = location as? Toilet, let price = toilet.price {
                     HStack {
                         Circle()
                             .frame(width: 12, height: 12)
-                        Text(isOperational ? "Wasser lauft" : "Wasser lauft nöd")
+                            .foregroundStyle(price == "Free" ? .green : .orange)
+                        Text(price)
                             .fontWeight(.bold)
+                            .foregroundStyle(price == "Free" ? .green : .orange)
                     }
-                    .foregroundStyle(isOperational ? .green : .red)
                 }
             }
             Spacer()
             
             Button(action: {
-                openInAppleMaps(name: location.primaryType?.title ?? "", coordinate: location.coordinate)
+                openInAppleMaps(name: location.name, coordinate: location.coordinate)
             }) {
                 VStack {
                     Image(systemName: "figure.walk")
-                    if let travelTime = location.directions?.routes.first?.expectedTravelTime {
-                        Text(travelTime.formattedAsHoursAndMinutes())
-                    } else {
-                        Text("1 mins")
-                            .redacted(reason: .placeholder)
-                    }
+                    Text("1 mins")
+                        .redacted(reason: .placeholder)
                 }
                 .font(.system(size: 14).bold())
                 .padding(8)

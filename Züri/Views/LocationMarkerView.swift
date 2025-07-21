@@ -9,11 +9,11 @@ import SwiftUI
 import MapKit
 
 struct LocationMarkerView: MapContent {
-    var location: Location
+    var location: any Location
 
     var body: some MapContent {
-        Marker("", systemImage: location.primaryType?.systemImageName ?? "", coordinate: CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude))
-            .tint(location.primaryType?.tint ?? .blue)
-            .tag(location)
+        Marker("", systemImage: location.type.systemImageName, coordinate: location.coordinates)
+            .tint(location.type.tint)
+            .tag(AnyHashable(location.id))
     }
 }

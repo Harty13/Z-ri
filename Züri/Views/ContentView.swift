@@ -9,22 +9,15 @@ import SwiftUI
 import MapKit
 
 struct ContentView: View {
-    @StateObject var firebaseAPI = FirebaseAPI()
+    @StateObject var locationService = LocationService.shared
     @StateObject var mapManager = MapManager()
     
-//    @State private var position: MapCameraPosition = .region(MKCoordinateRegion.zürichRegion)
-//    @State var lastMapCameraState: MapCamera? = nil
-//    @State var currentMapCameraState: MapCamera? = nil
+    @State var locations: [any Location] = []
+    @State var selectedLocationTypes: [LocationType] = []
     
-    @State var locations: [Location] = []
-    @State var locationTypes: [LocationType] = []
-    
-    
-    @State var selectedLocation: Location? = nil
+    @State var selectedLocation: (any Location)? = nil
     @State var selectedLocationSheetIsPresented = false
     @State var limmatTemperature: WeatherAPI.LimmatTemperature? = nil
-    
-    @State var selectedLocationTypeIDsFilters: [String] = []
     
     @State private var currentMapCameraDistance: Double = 1
     
@@ -57,9 +50,6 @@ struct ContentView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                     mapManager.zoomToUser()
                 }
-            }
-            .task {
-                locationTypes = await firebaseAPI.downloadLocationTypes() ?? []
             }
             .onChange(of: selectedLocation?.id) {
                 if let selectedLocation {
@@ -123,11 +113,8 @@ struct ContentView: View {
         .sheet(isPresented: .constant(true)) {
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(locations, id: \.self) { location in
-                        CompactLocationView(
-                            location: location,
-                            type: locationTypes.first(where: { $0.locationTypeID == location.primaryTypeID })
-                        )
+                    ForEach(locations, id: \.id) { location in
+                        CompactLocationView(location: location)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
                         .background(
@@ -150,13 +137,13 @@ struct ContentView: View {
             .safeAreaInset(edge: .top) {
                 VStack(spacing: 8) {
                     HStack {
-                        if let locationTypeID = selectedLocationTypeIDsFilters.first, let locationType = locationTypes.first(where: { $0.locationTypeID == locationTypeID }) {
+                        if let locationType = selectedLocationTypes.first {
                             Text(locationType.title)
                                 .font(.title.weight(.black).width(.expanded))
                             
                             Spacer()
                             XButton {
-                                selectedLocationTypeIDsFilters = []
+                                selectedLocationTypes = []
                                 locations = []
                                 selectedLocation = nil
                             }
@@ -187,8 +174,8 @@ struct ContentView: View {
         VStack(alignment: .leading) {
                 Text("Züri.")
                     .font(.largeTitle.weight(.black).width(.expanded))
-                    .waveEffect(isLoading: firebaseAPI.isLoading)
-                    .sensoryFeedback(.success, trigger: firebaseAPI.isLoading == false)
+                    .waveEffect(isLoading: locationService.isLoading)
+                    .sensoryFeedback(.success, trigger: locationService.isLoading == false)
             
             HStack {
                 Image(systemName: "water.waves")
@@ -214,59 +201,69 @@ struct ContentView: View {
     var bottomBar: some View {
         VStack(alignment: .leading) {
             HStack {
-                if selectedLocationTypeIDsFilters.isEmpty {
+                if selectedLocationTypes.isEmpty {
                     Text("Was suechsch?")
                         .font(.title.weight(.black).width(.expanded))
                         .foregroundStyle(.primary)
                     Spacer()
                     
                 } else {
-                    if let locationTypeID = selectedLocationTypeIDsFilters.first, let locationType = locationTypes.first(where: { $0.locationTypeID == locationTypeID }) {
+                    if let locationType = selectedLocationTypes.first {
                         Text(locationType.title)
                             .font(.title.weight(.black).width(.expanded))
                         
                         Spacer()
                         XButton {
-                            selectedLocationTypeIDsFilters = []
+                            selectedLocationTypes = []
                             locations = []
                             selectedLocation = nil
                         }
                     }
                 }
-
-
             }
             .padding(.horizontal)
             
-            if selectedLocationTypeIDsFilters.isEmpty {
+            if selectedLocationTypes.isEmpty {
                 ScrollView(.horizontal) {
                     HStack {
-                        ForEach(locationTypes, id: \.locationTypeID) { locationType in
+                        ForEach(LocationType.allCases, id: \.self) { locationType in
                             Button(action: {
-                                if selectedLocationTypeIDsFilters.contains(locationType.locationTypeID) {
-                                    selectedLocationTypeIDsFilters = []
+                                if selectedLocationTypes.contains(locationType) {
+                                    selectedLocationTypes = []
                                     self.locations = []
                                     
                                 } else {
-                                    selectedLocationTypeIDsFilters = [locationType.locationTypeID]
+                                    selectedLocationTypes = [locationType]
                                     
                                     guard let userLocation = mapManager.location else { return }
-                                    firebaseAPI.downloadLocations(types: selectedLocationTypeIDsFilters, currentLocation: userLocation.coordinate, completion: { locations in
-                                        self.locations = locations ?? []
-                                        self.selectedLocation = self.locations.first
-                                        mapManager.zoomToLocations(locations: Array(self.locations.prefix(3)))
-                                    })
+                                    
+                                    Task {
+                                        do {
+                                            let fetchedLocations = try await locationService.fetchLocations(
+                                                ofType: locationType,
+                                                nearCoordinate: userLocation.coordinate
+                                            )
+                                            
+                                            await MainActor.run {
+                                                self.locations = fetchedLocations
+                                                self.selectedLocation = self.locations.first
+                                                mapManager.zoomToLocations(locations: Array(self.locations.prefix(3)))
+                                            }
+                                        } catch {
+                                            print("Error fetching locations: \(error)")
+                                        }
+                                    }
                                 }
                                 
                             }) {
                                 Text("\(locationType.emoji) \(locationType.title)")
                                     .fontWeight(.bold)
                                     .padding(12)
-                                    .background(selectedLocationTypeIDsFilters.contains(locationType.locationTypeID) ? .thickMaterial : .thinMaterial)
+                                    .background(selectedLocationTypes.contains(locationType) ? .thickMaterial : .thinMaterial)
                                     .clipShape(Capsule())
                                     .overlay(
                                         Capsule().strokeBorder(
-                                            selectedLocationTypeIDsFilters.contains(locationType.locationTypeID) ? .blue : .primary.opacity(0.5),
+                                            selectedLocationTypes.contains(locationType) ? .blue : .primary.opacity(0.5),
                                             lineWidth: 3
                                         )
                                     )
@@ -283,11 +280,8 @@ struct ContentView: View {
             } else {
                 ScrollView(.horizontal) {
                     HStack(spacing: 0) {
-                        ForEach(locations, id: \.self) { location in
-                            CompactLocationView(
-                                location: location,
-                                type: locationTypes.first(where: { $0.locationTypeID == location.primaryTypeID })
-                            )
+                        ForEach(locations, id: \.id) { location in
+                            CompactLocationView(location: location)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding()
                             .background(
