@@ -26,7 +26,7 @@ class MapManager: CLLocationManager, ObservableObject {
         cameraPosition = .camera(camera)
     }
     
-    func zoomToLocation(location: Location) {
+    func zoomToLocation(location: any Location) {
         guard let userLocation = self.location else { return }
         
         mapCameraStateBeforeSelection = currentMapCameraState
@@ -40,7 +40,7 @@ class MapManager: CLLocationManager, ObservableObject {
         cameraPosition = .camera(camera)
     }
     
-    func zoomToLocations(locations: [Location]) {
+    func zoomToLocations(locations: [any Location]) {
         guard let userLocation = self.location else { return }
         
         let furthestLocationDistance = locations.map({ $0.coordinate }).map {
